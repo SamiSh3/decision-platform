@@ -23,6 +23,7 @@ from app.routers import (
     expert_router,
     expert_session_router,
     knowledge_source_router,
+    permission_router,
     questionnaire_router,
     response_router,
     rule_router,
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
     prefix = settings.api_v1_prefix
     app.include_router(auth_router.router, prefix=prefix)
     app.include_router(user_router.router, prefix=prefix)
+    app.include_router(permission_router.router, prefix=prefix)
     app.include_router(expert_router.router, prefix=prefix)
     app.include_router(domain_router.router, prefix=prefix)
     app.include_router(questionnaire_router.router, prefix=prefix)

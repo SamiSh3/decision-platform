@@ -73,6 +73,29 @@ def require_roles(*allowed_roles: RoleName) -> Callable[..., User]:
     return _checker
 
 
+def require_permissions(*required_codes: str) -> Callable[..., User]:
+    """Dependency factory enforcing fine-grained, permission-code based authorization.
+
+    A user satisfies the check if their role holds ALL of `required_codes` (via
+    `RolePermission` grants), or if they are a superuser. This composes with
+    `require_roles` for endpoints that need both a coarse role gate and a specific
+    capability check (e.g. "must be an expert AND hold rules:publish")."""
+
+    def _checker(current_user: User = Depends(get_current_active_user)) -> User:
+        if current_user.is_superuser:
+            return current_user
+        granted = current_user.role.permission_codes if current_user.role else set()
+        missing = set(required_codes) - granted
+        if missing:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Missing required permission(s): {', '.join(sorted(missing))}",
+            )
+        return current_user
+
+    return _checker
+
+
 def get_client_ip(request: Request) -> str | None:
     if request.client:
         return request.client.host
