@@ -30,11 +30,13 @@ from app.models import (  # noqa: E402
     Evidence,
     Expert,
     KnowledgeSource,
+    Permission,
     Question,
     Questionnaire,
     QuestionOption,
     Response,
     Role,
+    RolePermission,
     Rule,
     RuleCondition,
     RuleOutcome,
@@ -64,6 +66,51 @@ def seed_roles(session) -> dict[str, Role]:
         )
         roles[role_name.value] = role
     return roles
+
+
+# (resource, action, description) catalog and which roles receive each grant.
+# Superusers (admin) bypass permission checks entirely, but the catalog still
+# grants admin every entry explicitly so the grant listing reflects reality
+# for anyone auditing role capabilities.
+PERMISSION_CATALOG: list[tuple[str, str, str, tuple[str, ...]]] = [
+    ("cases", "create", "Create a case", ("admin", "expert", "reviewer", "user")),
+    ("cases", "read", "Read case data", ("admin", "expert", "reviewer", "user")),
+    ("cases", "update", "Update case data", ("admin", "expert", "reviewer", "user")),
+    ("cases", "delete", "Delete (soft) a case", ("admin",)),
+    ("responses", "create", "Submit an expert response", ("admin", "expert")),
+    ("responses", "update", "Update an expert response", ("admin", "expert")),
+    ("evidence", "create", "Attach evidence to a response", ("admin", "expert")),
+    ("knowledge_sources", "create", "Add a knowledge source", ("admin", "expert")),
+    ("rules", "read", "Read rules", ("admin", "expert", "reviewer", "user")),
+    ("rules", "create", "Create rules", ("admin",)),
+    ("rules", "publish", "Activate a rule version", ("admin",)),
+    (
+        "decisions",
+        "evaluate",
+        "Run the decision engine on a case",
+        ("admin", "expert", "reviewer", "user"),
+    ),
+    ("audit", "read", "Read audit logs and version history", ("admin", "reviewer")),
+    ("users", "manage", "Create, update or deactivate users", ("admin",)),
+]
+
+
+def seed_permissions(session, roles: dict[str, Role]) -> None:
+    for resource, action, description, granted_roles in PERMISSION_CATALOG:
+        code = f"{resource}:{action}"
+        permission, _ = get_or_create(
+            session,
+            Permission,
+            code=code,
+            defaults={"resource": resource, "action": action, "description": description},
+        )
+        for role_name in granted_roles:
+            get_or_create(
+                session,
+                RolePermission,
+                role_id=roles[role_name].id,
+                permission_id=permission.id,
+            )
 
 
 def seed_users(session, roles: dict[str, Role]) -> dict[str, User]:
@@ -514,6 +561,7 @@ def main() -> None:
     session = SessionLocal()
     try:
         roles = seed_roles(session)
+        seed_permissions(session, roles)
         users = seed_users(session, roles)
         expert = seed_expert(session, users["expert@decision-platform.example"])
         domain = seed_car_domain(session)
