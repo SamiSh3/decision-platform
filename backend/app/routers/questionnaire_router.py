@@ -81,6 +81,20 @@ def delete_questionnaire(
 
 
 @router.post(
+    "/{questionnaire_id}/new-version",
+    response_model=QuestionnaireRead,
+    status_code=201,
+    dependencies=[Depends(require_admin)],
+)
+def create_new_questionnaire_version(
+    questionnaire_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> QuestionnaireRead:
+    return QuestionnaireService(db).create_new_version(questionnaire_id, actor_id=current_user.id)
+
+
+@router.post(
     "/{questionnaire_id}/questions",
     response_model=QuestionRead,
     status_code=201,
