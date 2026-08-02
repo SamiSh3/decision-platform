@@ -92,6 +92,14 @@ See `Makefile` for `install`, `run`, `migrate`, `makemigrations`, `seed`, `test`
    confidence scoring, and produces a `DecisionResult` with a full, structured
    explanation trace.
 
+## Documentation
+
+- [docs/Architecture.md](docs/Architecture.md) - layering, request flow, auth model
+- [docs/API.md](docs/API.md) - endpoint reference and conventions
+- [docs/Database.md](docs/Database.md) - entity list, relationships, migrations
+- [docs/Development.md](docs/Development.md) - setup, Makefile targets, testing, adding entities
+- [docs/DecisionEngine.md](docs/DecisionEngine.md) - rule engine pipeline in depth
+
 ## License
 
 Proprietary - internal reference implementation.
