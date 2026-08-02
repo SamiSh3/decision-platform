@@ -5,12 +5,16 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.api.exception_handlers import register_exception_handlers
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
+from app.database.session import get_db
 from app.middleware.audit_middleware import AuditContextMiddleware
 from app.middleware.logging_middleware import RequestLoggingMiddleware
 from app.routers import (
@@ -87,8 +91,24 @@ def create_app() -> FastAPI:
     app.include_router(audit_router.router, prefix=prefix)
 
     @app.get("/health", tags=["health"])
-    def health_check() -> dict[str, str]:
-        return {"status": "ok", "app": settings.app_name, "env": settings.app_env}
+    def health_check(db: Session = Depends(get_db)) -> JSONResponse:
+        db_status = "ok"
+        try:
+            db.execute(text("SELECT 1"))
+        except Exception as exc:  # pragma: no cover - only hit if DB is truly down
+            logger.error("health_check_database_unreachable", error=str(exc))
+            db_status = "unreachable"
+
+        payload = {
+            "status": "ok" if db_status == "ok" else "degraded",
+            "app": settings.app_name,
+            "env": settings.app_env,
+            "database": db_status,
+        }
+        status_code = (
+            status.HTTP_200_OK if db_status == "ok" else status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+        return JSONResponse(status_code=status_code, content=payload)
 
     return app
 
