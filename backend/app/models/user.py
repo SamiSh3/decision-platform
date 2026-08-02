@@ -13,6 +13,7 @@ from app.database.base import BaseModel
 
 if TYPE_CHECKING:
     from app.models.expert import Expert
+    from app.models.permission import RolePermission
 
 
 class Role(BaseModel):
@@ -24,6 +25,18 @@ class Role(BaseModel):
     users: Mapped[list[User]] = relationship(
         "User", back_populates="role", foreign_keys="[User.role_id]"
     )
+    permission_grants: Mapped[list[RolePermission]] = relationship(
+        "RolePermission", back_populates="role", cascade="all, delete-orphan"
+    )
+
+    @property
+    def permission_codes(self) -> set[str]:
+        """Codes of all non-deleted permissions granted to this role."""
+        return {
+            grant.permission.code
+            for grant in self.permission_grants
+            if not grant.is_deleted and not grant.permission.is_deleted
+        }
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Role {self.name}>"

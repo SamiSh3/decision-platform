@@ -14,6 +14,7 @@ from app.models.domain import Domain
 from app.models.evidence import Evidence, KnowledgeSource
 from app.models.expert import Expert
 from app.models.expert_session import ExpertSession
+from app.models.permission import Permission, RolePermission
 from app.models.question import Question, QuestionOption
 from app.models.questionnaire import Questionnaire
 from app.models.response import Response
@@ -33,6 +34,8 @@ __all__ = [
     "KnowledgeSource",
     "Expert",
     "ExpertSession",
+    "Permission",
+    "RolePermission",
     "Question",
     "QuestionOption",
     "Questionnaire",

@@ -47,9 +47,7 @@ class Question(BaseModel):
         SAEnum(RiskLevel, name="risk_level_enum"), nullable=False, default=RiskLevel.LOW
     )
 
-    questionnaire: Mapped[Questionnaire] = relationship(
-        "Questionnaire", back_populates="questions"
-    )
+    questionnaire: Mapped[Questionnaire] = relationship("Questionnaire", back_populates="questions")
     options: Mapped[list[QuestionOption]] = relationship(
         "QuestionOption",
         back_populates="question",
