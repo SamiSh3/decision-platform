@@ -8,6 +8,8 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.utils.pagination import compute_total_pages
+
 T = TypeVar("T")
 
 
@@ -40,7 +42,7 @@ class Page(BaseModel, Generic[T]):
 
     @classmethod
     def create(cls, items: list[T], total: int, page: int, page_size: int) -> Page[T]:
-        pages = (total + page_size - 1) // page_size if page_size else 0
+        pages = compute_total_pages(total, page_size)
         return cls(items=items, total=total, page=page, page_size=page_size, pages=pages)
 
 
