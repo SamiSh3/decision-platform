@@ -1,0 +1,36 @@
+[project]
+name = "decision-platform"
+version = "0.1.0"
+description = "Decision Intelligence Platform - knowledge capture and rule-based decision engine"
+requires-python = ">=3.13"
+
+[tool.black]
+line-length = 100
+target-version = ["py313"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["backend"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "N", "W"]
+ignore = ["B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.13"
+mypy_path = "backend"
+namespace_packages = true
+explicit_package_bases = true
+ignore_missing_imports = true
+disallow_untyped_defs = false
+warn_unused_ignores = true
+warn_return_any = false
+exclude = ["alembic", "tests"]
+
+[tool.pytest.ini_options]
+pythonpath = ["backend"]
+testpaths = ["backend/tests"]

@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: decision_user
+          POSTGRES_PASSWORD: decision_password
+          POSTGRES_DB: decision_platform_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U decision_user -d decision_platform_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+psycopg://decision_user:decision_password@localhost:5432/decision_platform_test
+      JWT_SECRET_KEY: ci-test-secret
+      APP_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check backend
+
+      - name: Format check (black)
+        run: black --check backend
+
+      - name: Type check (mypy)
+        run: mypy backend || true
+
+      - name: Run migrations
+        run: alembic upgrade head
+
+      - name: Run tests
+        run: PYTHONPATH=backend pytest -v --cov=backend/app --cov-report=term-missing
