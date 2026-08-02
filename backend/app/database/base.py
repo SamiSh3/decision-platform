@@ -62,6 +62,24 @@ class AuditUserMixin:
     the table name) rather than being hardcoded, since a fixed name reused across
     every model's FK would be ambiguous to Alembic's autogenerate diffing and can
     cause it to silently skip emitting the constraint for all but one table.
+
+    `use_alter=True` is required here: `Role` (like every model) has
+    `created_by`/`updated_by` pointing at `users.id`, while `User.role_id`
+    points at `roles.id` - a genuine circular FK dependency between the two
+    tables. `use_alter` tells SQLAlchemy/Alembic to defer these two columns'
+    constraints to a follow-up `ALTER TABLE` after both tables exist, which is
+    the standard way to break a two-table FK cycle.
+
+    Caveat this cost us once already: Alembic's autogenerate only emits that
+    follow-up `ALTER TABLE` automatically when it detects a FK added to an
+    *existing* table. For a brand-new table created in the same migration,
+    autogenerate embeds the `use_alter=True` FK inline in `create_table()` -
+    where it is then silently dropped from the DDL rather than deferred, since
+    nothing emits the separate `ALTER TABLE` for it. Any migration that adds a
+    new model must include an explicit `op.create_foreign_key(...)` call for
+    its `created_by`/`updated_by` columns; see
+    `alembic/versions/8b92d956d709_*.py` for the pattern, and
+    `docs/Database.md` for the full writeup.
     """
 
     created_by: Mapped[uuid.UUID | None] = mapped_column(

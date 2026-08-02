@@ -17,15 +17,36 @@ Every table inherits from `app.database.base.BaseModel`, which composes:
 
 A shared `naming_convention` on `Base.metadata` generates predictable,
 **unique** constraint names, e.g. `fk_cases_created_by_users`,
-`uq_rule_domain_code_version`. This matters in practice: an earlier revision
-of this project hardcoded a single shared constraint name
-(`fk_created_by_user`) for the `created_by` FK on every table. Because that
-name collided across all 20+ models, Alembic's autogenerate diffing treated
-it as "already seen" and silently skipped emitting the constraint for every
-table but one - the audit FKs were present in the ORM layer but missing from
-the actual database. Switching to the naming-convention-derived name (which
-incorporates the table name) fixed this; see migration
-`8b92d956d709_add_permissions_role_permissions_and_.py` for the backfill.
+`uq_rule_domain_code_version`. Two related, non-obvious Alembic pitfalls this
+project ran into (both now fixed, both worth knowing about if you add models):
+
+1. **Shared constraint names collide across tables.** An early revision
+   hardcoded a single constraint name (`fk_created_by_user`) for the
+   `created_by` FK on every table. Because that name collided across all
+   20+ models, Alembic's autogenerate diffing treated it as "already seen"
+   and silently skipped emitting the constraint for every table but one -
+   the audit FKs were present in the ORM layer but missing from the actual
+   database. Fixed by switching to the naming-convention-derived name, which
+   incorporates the table name and is therefore unique per table.
+2. **`use_alter=True` FKs on a brand-new table are silently dropped, not
+   deferred.** `created_by`/`updated_by` need `use_alter=True` because `Role`
+   (like every model) points at `users.id` while `User.role_id` points at
+   `roles.id` - a genuine circular FK dependency that `use_alter` exists to
+   break by deferring the constraint to a follow-up `ALTER TABLE`. Alembic's
+   autogenerate emits that follow-up automatically when a FK is *added to an
+   existing table*, but when a **new** table is created in the same
+   migration, it instead embeds the `use_alter=True` FK inline inside
+   `create_table()` - where SQLAlchemy's DDL compiler drops it entirely,
+   since `use_alter` means "don't emit this inline" and nothing emits it
+   separately. This bit the `permissions`/`role_permissions` tables when they
+   were introduced: the generated migration listed their `created_by`/
+   `updated_by` FKs, but they never actually reached the database. Fixed by
+   hand-editing that migration to add explicit `op.create_foreign_key(...)`
+   calls after each new table's `create_table()`/`create_index()` calls (see
+   `alembic/versions/8b92d956d709_*.py`). **Any migration that introduces a
+   new model must do the same** - don't trust the inline FK in a fresh
+   `create_table()` for `created_by`/`updated_by`; verify with
+   `alembic check` and `\d <table>` in psql after every new-model migration.
 
 ## Entities
 

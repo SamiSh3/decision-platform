@@ -32,12 +32,17 @@ def upgrade() -> None:
     sa.Column('updated_by', sa.UUID(), nullable=True),
     sa.Column('is_deleted', sa.Boolean(), nullable=False),
     sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['created_by'], ['users.id'], name=op.f('fk_permissions_created_by_users'), ondelete='SET NULL', use_alter=True),
-    sa.ForeignKeyConstraint(['updated_by'], ['users.id'], name=op.f('fk_permissions_updated_by_users'), ondelete='SET NULL', use_alter=True),
+    # NOTE: created_by/updated_by FKs are NOT declared inline here. A
+    # use_alter=True ForeignKeyConstraint embedded in the same create_table()
+    # that defines the table is silently dropped by Alembic instead of being
+    # deferred - see the AuditUserMixin docstring in app/database/base.py.
+    # They are added explicitly via op.create_foreign_key() below instead.
     sa.PrimaryKeyConstraint('id', name=op.f('pk_permissions'))
     )
     op.create_index(op.f('ix_permissions_code'), 'permissions', ['code'], unique=True)
     op.create_index(op.f('ix_permissions_resource'), 'permissions', ['resource'], unique=False)
+    op.create_foreign_key(op.f('fk_permissions_created_by_users'), 'permissions', 'users', ['created_by'], ['id'], ondelete='SET NULL', use_alter=True)
+    op.create_foreign_key(op.f('fk_permissions_updated_by_users'), 'permissions', 'users', ['updated_by'], ['id'], ondelete='SET NULL', use_alter=True)
     op.create_table('role_permissions',
     sa.Column('role_id', sa.UUID(), nullable=False),
     sa.Column('permission_id', sa.UUID(), nullable=False),
@@ -48,15 +53,17 @@ def upgrade() -> None:
     sa.Column('updated_by', sa.UUID(), nullable=True),
     sa.Column('is_deleted', sa.Boolean(), nullable=False),
     sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['created_by'], ['users.id'], name=op.f('fk_role_permissions_created_by_users'), ondelete='SET NULL', use_alter=True),
+    # See the note above op.create_table('permissions', ...): created_by/
+    # updated_by FKs are added explicitly below rather than inline.
     sa.ForeignKeyConstraint(['permission_id'], ['permissions.id'], name=op.f('fk_role_permissions_permission_id_permissions'), ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['role_id'], ['roles.id'], name=op.f('fk_role_permissions_role_id_roles'), ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['updated_by'], ['users.id'], name=op.f('fk_role_permissions_updated_by_users'), ondelete='SET NULL', use_alter=True),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_role_permissions')),
     sa.UniqueConstraint('role_id', 'permission_id', name='uq_role_permission_role_permission')
     )
     op.create_index(op.f('ix_role_permissions_permission_id'), 'role_permissions', ['permission_id'], unique=False)
     op.create_index(op.f('ix_role_permissions_role_id'), 'role_permissions', ['role_id'], unique=False)
+    op.create_foreign_key(op.f('fk_role_permissions_created_by_users'), 'role_permissions', 'users', ['created_by'], ['id'], ondelete='SET NULL', use_alter=True)
+    op.create_foreign_key(op.f('fk_role_permissions_updated_by_users'), 'role_permissions', 'users', ['updated_by'], ['id'], ondelete='SET NULL', use_alter=True)
     op.create_foreign_key(op.f('fk_attachments_created_by_users'), 'attachments', 'users', ['created_by'], ['id'], ondelete='SET NULL', use_alter=True)
     op.create_foreign_key(op.f('fk_attachments_updated_by_users'), 'attachments', 'users', ['updated_by'], ['id'], ondelete='SET NULL', use_alter=True)
     op.create_foreign_key(op.f('fk_audit_logs_updated_by_users'), 'audit_logs', 'users', ['updated_by'], ['id'], ondelete='SET NULL', use_alter=True)
