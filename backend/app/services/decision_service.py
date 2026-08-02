@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.decision_engine.engine import DecisionEngine
 from app.repositories.decision_repository import ConfidenceScoreRepository, DecisionResultRepository
 from app.schemas.decision import ConfidenceScoreRead, DecisionResultRead
+from app.utils.explanation_formatter import format_decision_explanation
 
 
 class DecisionService:
@@ -38,6 +39,19 @@ class DecisionService:
     def get(self, entity_id: uuid.UUID) -> DecisionResultRead:
         instance = self.result_repo.get_or_404(entity_id)
         return DecisionResultRead.model_validate(instance)
+
+    def get_explanation_text(self, entity_id: uuid.UUID) -> str:
+        instance = self.result_repo.get_or_404(entity_id)
+        return format_decision_explanation(
+            recommendation=(
+                instance.recommendation.value
+                if hasattr(instance.recommendation, "value")
+                else instance.recommendation
+            ),
+            overall_score=float(instance.overall_score),
+            overall_confidence=float(instance.overall_confidence),
+            explanation=instance.explanation,
+        )
 
     def list_for_case(self, case_id: uuid.UUID) -> list[DecisionResultRead]:
         items = self.result_repo.list_for_case(case_id)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
@@ -44,6 +45,13 @@ def get_decision_result(
     result_id: uuid.UUID, db: Session = Depends(get_db), _: User = Depends(get_current_active_user)
 ) -> DecisionResultRead:
     return DecisionService(db).get(result_id)
+
+
+@router.get("/decision-results/{result_id}/explanation", response_class=PlainTextResponse)
+def get_decision_result_explanation(
+    result_id: uuid.UUID, db: Session = Depends(get_db), _: User = Depends(get_current_active_user)
+) -> str:
+    return DecisionService(db).get_explanation_text(result_id)
 
 
 @router.get("/cases/{case_id}/confidence-scores", response_model=list[ConfidenceScoreRead])

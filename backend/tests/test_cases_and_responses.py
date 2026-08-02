@@ -121,3 +121,71 @@ def test_expert_can_submit_response_with_full_knowledge_fields(
     listed = client.get(f"/api/v1/cases/{case['id']}/responses", headers=expert_headers)
     assert listed.status_code == 200
     assert len(listed.json()) == 1
+
+
+def test_evaluate_case_and_read_plain_text_explanation(
+    client: TestClient,
+    admin_headers: dict[str, str],
+    expert_headers: dict[str, str],
+    user_headers: dict[str, str],
+    expert_user,
+) -> None:
+    domain = _create_domain(client, admin_headers)
+    setup = _create_questionnaire_with_question(client, admin_headers, domain["id"])
+
+    case = client.post(
+        "/api/v1/cases",
+        json={"domain_id": domain["id"], "title": "Case for explanation test"},
+        headers=user_headers,
+    ).json()
+
+    expert_profile = client.post(
+        "/api/v1/experts",
+        json={"user_id": str(expert_user.id), "specialty": "Mechanics", "years_experience": 8},
+        headers=admin_headers,
+    ).json()
+
+    client.post(
+        "/api/v1/responses",
+        json={
+            "case_id": case["id"],
+            "question_id": setup["question"]["id"],
+            "expert_id": expert_profile["id"],
+            "answer_value": {"value": 30000},
+            "confidence": 0.9,
+        },
+        headers=expert_headers,
+    )
+
+    rule = client.post(
+        "/api/v1/rules",
+        json={
+            "domain_id": domain["id"],
+            "code": "low_mileage_bonus",
+            "name": "Low mileage bonus",
+            "status": "active",
+            "conditions": [
+                {"attribute_path": "question:mileage", "operator": "less_than", "value": 50000}
+            ],
+            "outcomes": [
+                {
+                    "direction": "buy",
+                    "score_impact": 0.4,
+                    "explanation_template": "Low mileage bonus rule matched.",
+                }
+            ],
+        },
+        headers=admin_headers,
+    )
+    assert rule.status_code == 201
+
+    evaluation = client.post(f"/api/v1/cases/{case['id']}/evaluate", headers=user_headers)
+    assert evaluation.status_code == 201
+    result_id = evaluation.json()["id"]
+
+    explanation = client.get(
+        f"/api/v1/decision-results/{result_id}/explanation", headers=user_headers
+    )
+    assert explanation.status_code == 200
+    assert "Recommended" in explanation.text or "Neutral" in explanation.text
+    assert "Low mileage bonus rule matched." in explanation.text
