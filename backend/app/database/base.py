@@ -56,20 +56,22 @@ class TimestampMixin:
 
 
 class AuditUserMixin:
-    """Adds created_by / updated_by user references."""
+    """Adds created_by / updated_by user references.
 
-    @staticmethod
-    def _created_by_column() -> Mapped[uuid.UUID | None]:  # pragma: no cover
-        raise NotImplementedError
+    Constraint names are left to the shared naming convention (which incorporates
+    the table name) rather than being hardcoded, since a fixed name reused across
+    every model's FK would be ambiguous to Alembic's autogenerate diffing and can
+    cause it to silently skip emitting the constraint for all but one table.
+    """
 
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="SET NULL", use_alter=True, name="fk_created_by_user"),
+        ForeignKey("users.id", ondelete="SET NULL", use_alter=True),
         nullable=True,
     )
     updated_by: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="SET NULL", use_alter=True, name="fk_updated_by_user"),
+        ForeignKey("users.id", ondelete="SET NULL", use_alter=True),
         nullable=True,
     )
 
