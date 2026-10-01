@@ -99,6 +99,7 @@ See `Makefile` for `install`, `run`, `migrate`, `makemigrations`, `seed`, `test`
 - [docs/Database.md](docs/Database.md) - entity list, relationships, migrations
 - [docs/Development.md](docs/Development.md) - setup, Makefile targets, testing, adding entities
 - [docs/DecisionEngine.md](docs/DecisionEngine.md) - rule engine pipeline in depth
+- [docs/Deployment.md](docs/Deployment.md) - production server setup and auto-deploy
 
 ## License
 
